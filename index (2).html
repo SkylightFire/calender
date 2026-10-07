@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Calendar</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#202124;--mute:#5f6368;--line:#dadce0;--blue:#1a73e8;--hover:#f1f3f4;--sel:#e8f0fe}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:Roboto,"Google Sans",Arial,sans-serif;font-size:16px;color:var(--ink);background:#fff;display:flex;flex-direction:column}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:9px 16px;color:var(--ink)}
+button:hover{background:var(--hover)}
+button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+button.primary:hover{background:#1765cc}
+button.link{border:none;color:#c5221f;padding:6px 10px}
+button.sel{background:var(--sel);border-color:var(--blue);color:var(--blue);font-weight:500}
+.top{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-size:22px;color:var(--mute);margin-right:12px}
+.top h2{font-size:22px;font-weight:400;margin:0;flex:1;min-width:140px}
+.icon{width:40px;height:40px;border-radius:50%;padding:0;border:none;display:flex;align-items:center;justify-content:center}
+.icon svg{width:22px;height:22px;fill:var(--mute)}
+.main{flex:1;display:flex;flex-direction:column;min-height:0}
+#notice .notice{background:#fef7e0;border-bottom:1px solid #f9e08b;padding:10px 16px;font-size:14px}
+.dows,.grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.dows div{text-align:center;font-size:11px;font-weight:500;letter-spacing:.8px;color:var(--mute);padding:8px 0;border-left:1px solid var(--line)}
+.grid{flex:1;grid-auto-rows:minmax(100px,1fr);border-top:1px solid var(--line)}
+.day{border:none;border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:#fff;padding:4px 4px 2px;text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden;min-width:0}
+.day:hover{background:var(--hover)}
+.day.blank{background:#f8f9fa;cursor:default}
+.n{align-self:center;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;margin-bottom:2px}
+.today .n{background:var(--blue);color:#fff}
+.chip{font-size:12px;line-height:18px;color:#fff;border-radius:4px;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.more{font-size:12px;color:var(--mute);font-weight:500;padding-left:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;border-top:1px solid var(--line)}
+.pill{color:#fff;border-radius:14px;padding:3px 12px;font-size:14px;font-weight:500}
+.modal{position:fixed;inset:0;background:rgba(32,33,36,.5);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;z-index:10}
+.modal.open{display:flex}
+.sheet{background:#fff;border-radius:8px;padding:24px;width:100%;max-width:520px;margin:auto;box-shadow:0 24px 38px rgba(0,0,0,.25)}
+.sheet h3{margin:0 0 4px;font-size:22px;font-weight:400}
+.step{font-weight:500;margin:20px 0 8px;font-size:14px;color:var(--mute);text-transform:uppercase;letter-spacing:.5px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+input[type=text],input[type=time]{font:inherit;padding:10px 0;border:none;border-bottom:2px solid var(--line);width:100%;outline:none;border-radius:0;background:transparent}
+input:focus{border-bottom-color:var(--blue)}
+input[type=time]{width:auto;padding:8px;border:1px solid var(--line);border-radius:6px}
+.ev{display:flex;align-items:center;gap:12px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.dot{width:14px;height:14px;border-radius:4px;flex:none}
+.ev .t{flex:1}.ev small{color:var(--mute);display:block}
+.swatch{width:36px;height:36px;border-radius:50%;padding:0;border:3px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.swatch.sel{box-shadow:0 0 0 3px var(--ink)}
+.person{color:#fff;border:3px solid transparent;font-weight:500;border-radius:18px}
+.person:hover{opacity:.9;background:inherit}
+.person.sel{box-shadow:0 0 0 3px #fff,0 0 0 6px var(--ink)}
+.err{color:#c5221f;font-size:14px;margin-top:8px}
+.box{margin-top:12px;padding:14px;background:#f8f9fa;border-radius:8px}
+@media(max-width:600px){.grid{grid-auto-rows:minmax(64px,1fr)}.chip{font-size:0;height:8px;line-height:8px;padding:0;border-radius:4px}.brand{display:none}.sheet{padding:18px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <span class="brand">Shared Calendar</span>
+  <button id="today">Today</button>
+  <button class="icon" id="prev" aria-label="Previous month"><svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>
+  <button class="icon" id="next" aria-label="Next month"><svg viewBox="0 0 24 24"><path d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg></button>
+  <h2 id="title"></h2>
+  <button id="peopleBtn">People</button>
+  <button id="shareBtn" class="primary">Copy link to share</button>
+</div>
+<div class="main">
+  <div id="notice"></div>
+  <div class="dows" id="dows"></div>
+  <div class="grid" id="grid"></div>
+  <div class="legend" id="legend"></div>
+</div>
+<div class="modal" id="dayModal"><div class="sheet" id="daySheet"></div></div>
+<div class="modal" id="peopleModal"><div class="sheet" id="peopleSheet"></div></div>
+
+<script>
+/* ============ SETUP ============
+   Paste your Firebase Realtime Database URL between the quotes, e.g.
+   "https://my-calendar-default-rtdb.firebaseio.com"
+   Leave empty to test on your own device only (data is NOT shared).  */
+const DB_URL = "https://work-calender-30ad8-default-rtdb.asia-southeast1.firebasedatabase.app";
+/* =============================== */
+
+const COLORS=["#d50000","#e67c73","#f4511e","#f6bf26","#33b679","#0b8043","#039be5","#3f51b5","#7986cb","#8e24aa","#616161"];
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOWS=["SUN","MON","TUE","WED","THU","FRI","SAT"];
+
+let room=location.hash.replace("#","");
+if(!room){room=Array.from(crypto.getRandomValues(new Uint8Array(10)),b=>"abcdefghjkmnpqrstuvwxyz23456789"[b%31]).join("");location.hash=room;}
+
+let data={people:{},events:{}};
+let view=new Date();view.setDate(1);
+let selDate=null, form={};
+
+const $=id=>document.getElementById(id);
+const el=(tag,props={},...kids)=>{const e=document.createElement(tag);
+  for(const k in props){if(k==="class")e.className=props[k];else if(k==="style")e.style.cssText=props[k];else if(k.startsWith("on"))e[k]=props[k];else e.setAttribute(k,props[k]);}
+  kids.flat().forEach(c=>e.append(c));return e;};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const ymd=(y,m,d)=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+
+const LS="sharedcal-"+room;
+async function load(){
+  try{
+    if(DB_URL){const r=await fetch(`${DB_URL}/rooms/${room}.json`);const j=await r.json();data={people:(j&&j.people)||{},events:(j&&j.events)||{}};}
+    else{const j=JSON.parse(localStorage.getItem(LS)||"null");if(j)data={people:j.people||{},events:j.events||{}};}
+  }catch(e){}
+}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(data));}catch(e){}}
+async function put(kind,id,val){
+  if(val===null)delete data[kind][id];else data[kind][id]=val;
+  if(DB_URL){
+    try{await fetch(`${DB_URL}/rooms/${room}/${kind}/${id}.json`,{method:val===null?"DELETE":"PUT",body:val===null?undefined:JSON.stringify(val)});}
+    catch(e){alert("Could not save. Check your internet and try again.");}
+  }else saveLocal();
+}
+
+function eventsOn(date){return Object.entries(data.events).filter(([,e])=>e.date===date).map(([id,e])=>({id,...e}));}
+function person(id){return data.people[id]||{name:"Unknown",color:"#888"};}
+function timeLabel(e){return e.when==="custom"?`${e.start} to ${e.end}`:{morning:"Morning",lunch:"Lunchtime",all:"All day"}[e.when];}
+
+function renderCal(){
+  $("title").textContent=`${MONTHS[view.getMonth()]} ${view.getFullYear()}`;
+  const g=$("grid");g.innerHTML="";
+  const y=view.getFullYear(),m=view.getMonth();
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++)g.append(el("div",{class:"day blank"}));
+  const t=new Date(),todayStr=ymd(t.getFullYear(),t.getMonth(),t.getDate());
+  for(let d=1;d<=days;d++){
+    const ds=ymd(y,m,d),evs=eventsOn(ds);
+    const cell=el("button",{class:"day"+(ds===todayStr?" today":""),onclick:()=>openDay(ds),"aria-label":`${d} ${MONTHS[m]}, ${evs.length} events`},
+      el("span",{class:"n"},String(d)));
+    evs.slice(0,3).forEach(e=>cell.append(el("span",{class:"chip",style:`background:${person(e.who).color}`},`${person(e.who).name}: ${e.what}`)));
+    if(evs.length>3)cell.append(el("span",{class:"more"},`${evs.length-3} more`));
+    g.append(cell);
+  }
+  const rem=(7-(first+days)%7)%7;
+  for(let i=0;i<rem;i++)g.append(el("div",{class:"day blank"}));
+  const lg=$("legend");lg.innerHTML="";
+  Object.values(data.people).forEach(p=>lg.append(el("span",{class:"pill",style:`background:${p.color}`},p.name)));
+}
+
+function openDay(ds){selDate=ds;form={what:"",when:null,start:"09:00",end:"17:00",who:null,addingPerson:false};renderDay();$("dayModal").classList.add("open");}
+function closeModals(){document.querySelectorAll(".modal").forEach(m=>m.classList.remove("open"));selDate=null;renderCal();}
+
+function renderDay(){
+  const s=$("daySheet");s.innerHTML="";
+  const [Y,M,D]=selDate.split("-").map(Number);
+  s.append(el("h3",{},new Date(Y,M-1,D).toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"})));
+  const evs=eventsOn(selDate);
+  if(evs.length){
+    s.append(el("div",{class:"step"},"Already booked"));
+    evs.forEach(e=>s.append(el("div",{class:"ev"},
+      el("span",{class:"dot",style:`background:${person(e.who).color}`}),
+      el("div",{class:"t"},el("b",{},person(e.who).name),": "+e.what,el("small",{},timeLabel(e))),
+      el("button",{class:"link",onclick:async()=>{if(confirm("Remove this?")){await put("events",e.id,null);renderDay();}}},"Remove"))));
+  }
+  s.append(el("div",{class:"step"},"1. What is it?"));
+  s.append(el("input",{type:"text",placeholder:"Add title, e.g. Doctor, Birthday, Work trip",value:form.what,oninput:ev=>form.what=ev.target.value,maxlength:"80"}));
+
+  s.append(el("div",{class:"step"},"2. How long?"));
+  const opts=[["morning","Morning"],["lunch","Lunchtime"],["all","All day"],["custom","Choose times"]];
+  s.append(el("div",{class:"row"},opts.map(([k,l])=>el("button",{class:form.when===k?"sel":"",onclick:()=>{form.when=k;renderDay();}},l))));
+  if(form.when==="custom")s.append(el("div",{class:"row",style:"margin-top:12px;align-items:center"},
+    "From ",el("input",{type:"time",value:form.start,onchange:ev=>form.start=ev.target.value}),
+    " to ",el("input",{type:"time",value:form.end,onchange:ev=>form.end=ev.target.value})));
+
+  s.append(el("div",{class:"step"},"3. Who is it?"));
+  const row=el("div",{class:"row"});
+  Object.entries(data.people).forEach(([id,p])=>row.append(el("button",{class:"person"+(form.who===id?" sel":""),style:`background:${p.color}`,onclick:()=>{form.who=id;renderDay();}},p.name)));
+  row.append(el("button",{style:"border-radius:18px",onclick:()=>{form.addingPerson=!form.addingPerson;renderDay();}},"+ New person"));
+  s.append(row);
+  if(form.addingPerson)s.append(personForm(()=>{form.addingPerson=false;renderDay();},id=>form.who=id));
+
+  const err=el("div",{class:"err"});
+  s.append(el("div",{class:"row",style:"margin-top:24px;justify-content:flex-end"},
+    el("button",{onclick:closeModals},"Close"),
+    el("button",{class:"primary",onclick:async()=>{
+      if(!form.what.trim())return err.textContent="Please type what it is.";
+      if(!form.when)return err.textContent="Please pick how long (step 2).";
+      if(form.when==="custom"&&form.end<=form.start)return err.textContent="End time must be after start time.";
+      if(!form.who)return err.textContent="Please pick who it is (step 3).";
+      await put("events",uid(),{date:selDate,what:form.what.trim(),when:form.when,start:form.start,end:form.end,who:form.who});
+      form.what="";form.when=null;renderDay();renderCal();
+    }},"Save")),err);
+}
+
+function personForm(done,onNew){
+  let name="",color=COLORS[0];
+  const box=el("div",{class:"box"});
+  const sw=el("div",{class:"row",style:"margin:10px 0 14px"});
+  const drawSw=()=>{sw.innerHTML="";COLORS.forEach(c=>sw.append(el("button",{class:"swatch"+(c===color?" sel":""),style:`background:${c}`,"aria-label":"colour",onclick:()=>{color=c;drawSw();}})));};drawSw();
+  const err=el("div",{class:"err"});
+  box.append(el("b",{},"Name"),el("input",{type:"text",placeholder:"e.g. Grandma, Dave",maxlength:"20",oninput:e=>name=e.target.value}),
+    el("div",{style:"margin-top:14px"},el("b",{},"Colour")),sw,
+    el("button",{class:"primary",onclick:async()=>{
+      if(!name.trim())return err.textContent="Please type a name.";
+      const id=uid();await put("people",id,{name:name.trim(),color});onNew(id);done();renderCal();
+    }},"Add person"),err);
+  return box;
+}
+
+function renderPeople(){
+  const s=$("peopleSheet");s.innerHTML="";
+  s.append(el("h3",{},"People"));
+  const ps=Object.entries(data.people);
+  if(!ps.length)s.append(el("p",{style:"color:var(--mute)"},"No one yet. Add the first person below."));
+  ps.forEach(([id,p])=>s.append(el("div",{class:"ev"},el("span",{class:"dot",style:`background:${p.color}`}),el("div",{class:"t"},p.name),
+    el("button",{class:"link",onclick:async()=>{
+      const n=Object.values(data.events).filter(e=>e.who===id).length;
+      if(confirm(`Remove ${p.name}${n?` and their ${n} event(s)`:""}?`)){
+        for(const [eid,e] of Object.entries(data.events))if(e.who===id)await put("events",eid,null);
+        await put("people",id,null);renderPeople();renderCal();}
+    }},"Remove"))));
+  s.append(el("div",{class:"step"},"Add a new person"));
+  s.append(personForm(renderPeople,()=>{}));
+  s.append(el("div",{class:"row",style:"margin-top:20px;justify-content:flex-end"},el("button",{onclick:closeModals},"Close")));
+}
+
+DOWS.forEach(d=>$("dows").append(el("div",{},d)));
+$("prev").onclick=()=>{view.setMonth(view.getMonth()-1);renderCal();};
+$("next").onclick=()=>{view.setMonth(view.getMonth()+1);renderCal();};
+$("today").onclick=()=>{view=new Date();view.setDate(1);renderCal();};
+$("peopleBtn").onclick=()=>{renderPeople();$("peopleModal").classList.add("open");};
+$("shareBtn").onclick=async()=>{
+  try{await navigator.clipboard.writeText(location.href);$("shareBtn").textContent="Copied. Send it to everyone";}
+  catch(e){prompt("Copy this link and send it to everyone:",location.href);}
+  setTimeout(()=>$("shareBtn").textContent="Copy link to share",3000);
+};
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModals();}));
+addEventListener("hashchange",()=>location.reload());
+
+if(!DB_URL)$("notice").append(el("div",{class:"notice"},"Test mode: events are saved on this device only. To share with others, add your database link at the top of index.html."));
+
+(async()=>{
+  await load();renderCal();
+  if(DB_URL)setInterval(async()=>{if(!document.querySelector(".modal.open")){await load();renderCal();}},6000);
+})();
+</script>
+</body>
+</html>
